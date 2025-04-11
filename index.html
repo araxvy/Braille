@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Braille Spot Game</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css" integrity="sha512-1sCRPdkRXhBV2PBLUdRb4tMg1w2YPf37qatUFeS7zlBy7jJI8Lf4VHwWfZZfpXtYSLy85pkm9GaYVYMfw5BC1A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=braille:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'braille', sans-serif;
+      background-color: #0e111a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #spot-container {
+      text-align: center;
+    }
+
+    .title {
+      font-size: 2em;
+      margin-bottom: 20px;
+      color: #23af57;
+    }
+
+    #spot-target {
+      font-size: 3em;
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 2px solid white;
+      display: inline-block;
+      background-color: #0e111bcc;
+    }
+
+    #spot-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 60px);
+      grid-template-rows: repeat(10, 60px);
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .spot-grid-square {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #191919;
+      color: white;
+      font-size: 2em;
+      cursor: pointer;
+      width: 60px;
+      height: 60px;
+    }
+
+    .spot-grid-square:hover {
+      background-color: #d71f3e;
+    }
+
+    .timer-container {
+      width: 300px;
+      margin: 0 auto 20px auto;
+    }
+
+    .timer-outer {
+      width: 100%;
+      height: 10px;
+      background-color: rgb(36, 36, 36);
+      border-radius: 5px;
+    }
+
+    .timer-inner {
+      width: 100%;
+      height: 10px;
+      background-color: #d71f3e;
+      border-radius: 5px;
+    }
+
+    #play-again-btn {
+      display: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      color: white;
+      background-color: #23af57;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="spot-container" style="display: block;">
+    <div class="title">VAGOS ON TOP</div>
+    <div id="spot-target"></div>
+    <div id="spot-grid"></div>
+    <div id="spot-timer-container" class="timer-container">
+      <div id="spot-timer-bar-outer" class="timer-outer">
+        <div id="spot-timer-bar-inner" class="timer-inner"></div>
+      </div>
+    </div>
+    <button id="play-again-btn">Play Again</button>
+  </div>
+
+  <audio id="suspense-sound" src="https://actions.google.com/sounds/v1/ambiences/space_engine.ogg"></audio>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script>
+    const charSets = {
+      braille: [...Array(256)].map((_, i) => String.fromCharCode(0x2800 + i)).join('')
+    };
+
+    const spotSettings = {
+      spotGridSize: 10,
+      charSet: charSets.braille,
+      currentSpot: null,
+      targetChar: null,
+      timer: 15000,
+      required: 6,
+      currentScore: 0
+    };
+
+    let spotInterval;
+    let preventClick = false;
+
+    function playSuspenseSound() {
+      const sound = document.getElementById('suspense-sound');
+      sound.currentTime = 0;
+      sound.play();
+    }
+
+    function createSpotGrid(gridSize) {
+      const grid = $('#spot-grid').empty();
+      const total = gridSize * gridSize;
+      let template = '';
+
+      for (let i = 0; i < total; i++) {
+        template += `<div class="spot-grid-square" data-spot="${i}"><div class="spot-square-text">?</div></div>`;
+      }
+
+      grid.append(template);
+    }
+
+    function updateSpotSquares() {
+      clearInterval(spotInterval);
+      spotInterval = setInterval(() => {
+        const randomSquare = Math.floor(Math.random() * spotSettings.spotGridSize ** 2);
+        if (randomSquare == spotSettings.currentSpot) return;
+
+        const randomChar = spotSettings.charSet[Math.floor(Math.random() * spotSettings.charSet.length)];
+        if (randomChar == spotSettings.targetChar) return;
+
+        $(`[data-spot=${randomSquare}] .spot-square-text`).fadeOut(200, function () {
+          $(this).text(randomChar).fadeIn(200);
+        });
+      }, 30);
+    }
+
+    function startTimer() {
+      $('#spot-timer-bar-inner').stop().css('width', '100%').animate({ width: '0%' }, {
+        duration: spotSettings.timer,
+        complete: () => endSpotGame(false)
+      });
+    }
+
+    function startSpotGame() {
+      $('#play-again-btn').hide();
+      spotSettings.currentScore = 0;
+      createSpotGrid(spotSettings.spotGridSize);
+      spotSettings.targetChar = spotSettings.charSet[Math.floor(Math.random() * spotSettings.charSet.length)];
+      $('#spot-target').text(spotSettings.targetChar);
+
+      spotSettings.currentSpot = Math.floor(Math.random() * spotSettings.spotGridSize ** 2);
+      $(`[data-spot=${spotSettings.currentSpot}] .spot-square-text`).text(spotSettings.targetChar);
+
+      playSuspenseSound();
+      updateSpotSquares();
+      startTimer();
+    }
+
+    function endSpotGame(win) {
+      clearInterval(spotInterval);
+      $('#spot-timer-bar-inner').stop();
+      $('#spot-target').text(win ? '✅ Success!' : '❌ Failed');
+      $('#play-again-btn').fadeIn();
+    }
+
+    $(document).ready(() => {
+      startSpotGame();
+    });
+
+    $('#spot-grid').on('click', '.spot-grid-square', function () {
+      if (preventClick) return;
+      if ($(this).data('spot') == spotSettings.currentSpot) {
+        spotSettings.currentScore++;
+        if (spotSettings.currentScore >= spotSettings.required) {
+          endSpotGame(true);
+          return;
+        }
+        $('#spot-timer-bar-inner').stop().css('width', '100%');
+        preventClick = true;
+
+        let newSpot;
+        do {
+          newSpot = Math.floor(Math.random() * spotSettings.spotGridSize ** 2);
+        } while (newSpot === spotSettings.currentSpot);
+
+        let char;
+        do {
+          char = spotSettings.charSet[Math.floor(Math.random() * spotSettings.charSet.length)];
+        } while (char === spotSettings.targetChar);
+
+        clearInterval(spotInterval);
+
+        const oldEl = $(`[data-spot=${spotSettings.currentSpot}] .spot-square-text`);
+        oldEl.fadeOut(200, function () {
+          oldEl.text(char).fadeIn(200);
+          spotSettings.currentSpot = newSpot;
+          $(`[data-spot=${newSpot}] .spot-square-text`).text(spotSettings.targetChar);
+          updateSpotSquares();
+          preventClick = false;
+          startTimer();
+        });
+      }
+    });
+
+    $('#play-again-btn').on('click', function () {
+      startSpotGame();
+    });
+  </script>
+</body>
+</html>
