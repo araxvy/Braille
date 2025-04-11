@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simon Says Grid</title>
+  <style>
+    body {
+      margin: 0;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/7/76/GTAV_-_Background.png');
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 4px;
+      background-color: #111;
+      padding: 8px;
+      border: 4px solid #111;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.7);
+      width: 360px;
+      height: 360px;
+    }
+    .cell {
+      background-color: #005000;
+      border: 1px solid #0d0d0d;
+      width: 100%;
+      height: 100%;
+      transition: background-color 0.1s ease-in-out;
+    }
+    .highlight {
+      background-color: #00ff66 !important;
+    }
+    .error {
+      background-color: red !important;
+    }
+    .failed {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      font-size: 3rem;
+      padding: 40px;
+      border-radius: 20px;
+      z-index: 10;
+    }
+    .success {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 128, 0, 0.9);
+      color: white;
+      font-size: 3rem;
+      padding: 40px;
+      border-radius: 20px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+  <div id="failMessage" class="failed" style="display:none;">FAILED</div>
+  <div id="successMessage" class="success" style="display:none;">SUCCESS</div>
+
+  <script>
+    const grid = document.getElementById("grid");
+    const failMessage = document.getElementById("failMessage");
+    const successMessage = document.getElementById("successMessage");
+    const cells = [];
+    const sequence = [];
+    let playerSequence = [];
+    let clickable = false;
+    let roundCount = 0;
+    const maxRounds = 10;
+
+    for (let i = 0; i < 36; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      grid.appendChild(cell);
+      cells.push(cell);
+
+      cell.addEventListener("click", () => {
+        if (!clickable) return;
+        const index = parseInt(cell.dataset.index);
+        playerSequence.push(index);
+        flashCell(index);
+
+        if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
+          cell.classList.add("error");
+          showFail();
+          return;
+        }
+
+        if (playerSequence.length === sequence.length) {
+          if (roundCount + 1 >= maxRounds) {
+            showSuccess();
+          } else {
+            roundCount++;
+            setTimeout(() => {
+              nextRound();
+            }, 1000);
+          }
+        }
+      });
+    }
+
+    function flashCell(index) {
+      cells[index].classList.add("highlight");
+      setTimeout(() => cells[index].classList.remove("highlight"), 200);
+    }
+
+    function playSequence() {
+      clickable = false;
+      let i = 0;
+      const interval = setInterval(() => {
+        flashCell(sequence[i]);
+        i++;
+        if (i >= sequence.length) {
+          clearInterval(interval);
+          clickable = true;
+        }
+      }, 500);
+    }
+
+    function nextRound() {
+      playerSequence = [];
+      const next = Math.floor(Math.random() * 36);
+      sequence.push(next);
+      playSequence();
+    }
+
+    function showFail() {
+      clickable = false;
+      failMessage.style.display = 'block';
+      setTimeout(() => {
+        failMessage.style.display = 'none';
+        resetGame();
+      }, 2000);
+    }
+
+    function showSuccess() {
+      clickable = false;
+      successMessage.style.display = 'block';
+      setTimeout(() => {
+        successMessage.style.display = 'none';
+        resetGame();
+      }, 3000);
+    }
+
+    function resetGame() {
+      sequence.length = 0;
+      playerSequence.length = 0;
+      roundCount = 0;
+      cells.forEach(cell => cell.classList.remove("error"));
+      setTimeout(startGame, 1000);
+    }
+
+    function startGame() {
+      sequence.length = 0;
+      roundCount = 0;
+      nextRound();
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
